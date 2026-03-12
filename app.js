@@ -1,434 +1,662 @@
 // ============================================================
-//  식당 테이블 주문 앱 — Google Sheets 풀 연동 버전
-//  ▼ 아래 URL에 Apps Script 배포 주소를 넣으세요 ▼
+//  식당 테이블 주문 앱 v3 — 풀 기능 + Google Sheets 연동
 // ============================================================
 const SHEET_WEBHOOK_URL = "https://script.google.com/macros/s/AKfycbwUMoWJowguvPOWrJCoSTPT0n28-LMRVsBA5_LRqm1Dk_zdBcvJRtVA6c7sfXcHmOwf4A/exec";
-// ▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲▲
-
-const STORAGE_KEY = "restaurant-table-orders-v2";
+const STORAGE_KEY = "restaurant-v3";
+const PIN_CODE    = "1234"; // PIN 변경 시 여기 수정
 
 const TABLE_DEFINITIONS = [
-  { id: "hall-left-1",    name: "홀 좌측 1",    zone: "hall-left",    group: "홀 좌측" },
-  { id: "hall-left-2",    name: "홀 좌측 2",    zone: "hall-left",    group: "홀 좌측" },
-  { id: "hall-left-3",    name: "홀 좌측 3",    zone: "hall-left",    group: "홀 좌측" },
-  { id: "hall-left-4",    name: "홀 좌측 4",    zone: "hall-left",    group: "홀 좌측" },
-  { id: "hall-center-1",  name: "홀 가운데 1",  zone: "hall-center",  group: "홀 가운데" },
-  { id: "hall-center-2",  name: "홀 가운데 2",  zone: "hall-center",  group: "홀 가운데" },
-  { id: "hall-center-3",  name: "홀 가운데 3",  zone: "hall-center",  group: "홀 가운데" },
-  { id: "hall-center-4",  name: "홀 가운데 4",  zone: "hall-center",  group: "홀 가운데" },
-  { id: "hall-center-5",  name: "홀 가운데 5",  zone: "hall-center",  group: "홀 가운데" },
-  { id: "hall-right-1",   name: "홀 우측 1",    zone: "hall-right",   group: "홀 우측" },
-  { id: "hall-right-2",   name: "홀 우측 2",    zone: "hall-right",   group: "홀 우측" },
-  { id: "hall-right-3",   name: "홀 우측 3",    zone: "hall-right",   group: "홀 우측" },
-  { id: "hall-right-4",   name: "홀 우측 4",    zone: "hall-right",   group: "홀 우측" },
-  { id: "hall-right-5",   name: "홀 우측 5",    zone: "hall-right",   group: "홀 우측" },
-  { id: "room-large-1",   name: "큰방 1",       zone: "room-large",   group: "큰방" },
-  { id: "room-large-2",   name: "큰방 2",       zone: "room-large",   group: "큰방" },
-  { id: "room-large-3",   name: "큰방 3",       zone: "room-large",   group: "큰방" },
-  { id: "room-small-1-1", name: "작은방 1-1",   zone: "room-small-1", group: "작은방 1" },
-  { id: "room-small-1-2", name: "작은방 1-2",   zone: "room-small-1", group: "작은방 1" },
-  { id: "room-small-2-1", name: "작은방 2-1",   zone: "room-small-2", group: "작은방 2" },
+  { id:"hall-left-1",    name:"홀 좌측 1",   zone:"hall-left",    group:"홀 좌측" },
+  { id:"hall-left-2",    name:"홀 좌측 2",   zone:"hall-left",    group:"홀 좌측" },
+  { id:"hall-left-3",    name:"홀 좌측 3",   zone:"hall-left",    group:"홀 좌측" },
+  { id:"hall-left-4",    name:"홀 좌측 4",   zone:"hall-left",    group:"홀 좌측" },
+  { id:"hall-center-1",  name:"홀 가운데 1", zone:"hall-center",  group:"홀 가운데" },
+  { id:"hall-center-2",  name:"홀 가운데 2", zone:"hall-center",  group:"홀 가운데" },
+  { id:"hall-center-3",  name:"홀 가운데 3", zone:"hall-center",  group:"홀 가운데" },
+  { id:"hall-center-4",  name:"홀 가운데 4", zone:"hall-center",  group:"홀 가운데" },
+  { id:"hall-center-5",  name:"홀 가운데 5", zone:"hall-center",  group:"홀 가운데" },
+  { id:"hall-right-1",   name:"홀 우측 1",   zone:"hall-right",   group:"홀 우측" },
+  { id:"hall-right-2",   name:"홀 우측 2",   zone:"hall-right",   group:"홀 우측" },
+  { id:"hall-right-3",   name:"홀 우측 3",   zone:"hall-right",   group:"홀 우측" },
+  { id:"hall-right-4",   name:"홀 우측 4",   zone:"hall-right",   group:"홀 우측" },
+  { id:"hall-right-5",   name:"홀 우측 5",   zone:"hall-right",   group:"홀 우측" },
+  { id:"room-large-1",   name:"큰방 1",      zone:"room-large",   group:"큰방" },
+  { id:"room-large-2",   name:"큰방 2",      zone:"room-large",   group:"큰방" },
+  { id:"room-large-3",   name:"큰방 3",      zone:"room-large",   group:"큰방" },
+  { id:"room-small-1-1", name:"작은방 1-1",  zone:"room-small-1", group:"작은방 1" },
+  { id:"room-small-1-2", name:"작은방 1-2",  zone:"room-small-1", group:"작은방 1" },
+  { id:"room-small-2-1", name:"작은방 2-1",  zone:"room-small-2", group:"작은방 2" },
 ];
 
 const ZONES = [
-  { id: "hall-left",    label: "홀 좌측",   description: "4개 테이블" },
-  { id: "hall-center",  label: "홀 가운데", description: "5개 테이블" },
-  { id: "hall-right",   label: "홀 우측",   description: "5개 테이블" },
-  { id: "room-large",   label: "큰방",      description: "3개 테이블" },
-  { id: "room-small-1", label: "작은방 1",  description: "2개 테이블" },
-  { id: "room-small-2", label: "작은방 2",  description: "1개 테이블" },
+  { id:"hall-left",    label:"홀 좌측",   description:"4개 테이블" },
+  { id:"hall-center",  label:"홀 가운데", description:"5개 테이블" },
+  { id:"hall-right",   label:"홀 우측",   description:"5개 테이블" },
+  { id:"room-large",   label:"큰방",      description:"3개 테이블" },
+  { id:"room-small-1", label:"작은방 1",  description:"2개 테이블" },
+  { id:"room-small-2", label:"작은방 2",  description:"1개 테이블" },
 ];
 
-const MENU_ITEMS = [
-  { name: "로스구이 한마리", price: 70000 },
-  { name: "로스구이 반마리", price: 50000 },
-  { name: "백숙 한마리",    price: 80000 },
-  { name: "백숙 반마리",    price: 50000 },
-  { name: "찹쌀밥",         price:  4000 },
-  { name: "매밥",           price:  2000 },
-  { name: "소주",           price:  5000 },
-  { name: "맥주",           price:  5000 },
-  { name: "음료",           price:  2000 },
+const DEFAULT_MENUS = [
+  { id:"m1", name:"로스구이 한마리", price:70000 },
+  { id:"m2", name:"로스구이 반마리", price:50000 },
+  { id:"m3", name:"백숙 한마리",    price:80000 },
+  { id:"m4", name:"백숙 반마리",    price:50000 },
+  { id:"m5", name:"찹쌀밥",         price:4000  },
+  { id:"m6", name:"매밥",           price:2000  },
+  { id:"m7", name:"소주",           price:5000  },
+  { id:"m8", name:"맥주",           price:5000  },
+  { id:"m9", name:"음료",           price:2000  },
 ];
 
-// DOM refs
-const zoneSections          = document.querySelector("#zone-sections");
-const orderList             = document.querySelector("#order-list");
-const orderForm             = document.querySelector("#order-form");
-const activeTableTitle      = document.querySelector("#active-table-title");
-const orderCount            = document.querySelector("#order-count");
-const tableTotal            = document.querySelector("#table-total");
-const openTableCount        = document.querySelector("#open-table-count");
-const salesTotal            = document.querySelector("#sales-total");
-const selectedTableCount    = document.querySelector("#selected-table-count");
-const mergeButton           = document.querySelector("#merge-button");
-const unmergeButton         = document.querySelector("#unmerge-button");
-const mergeStatus           = document.querySelector("#merge-status");
-const resetButton           = document.querySelector("#reset-button");
-const checkoutButton        = document.querySelector("#checkout-button");
-const tableCardTemplate     = document.querySelector("#table-card-template");
-const orderItemTemplate     = document.querySelector("#order-item-template");
-const menuSelect            = document.querySelector("#menu-select");
-const menuPriceInput        = document.querySelector("#menu-price");
-const tableSelectionSummary = document.querySelector("#table-selection-summary");
-const appMode               = document.querySelector("#app-mode");
-const syncStatus            = document.querySelector("#sync-status");
-const tabButtons            = document.querySelectorAll(".tab-button");
-const tabPanels             = document.querySelectorAll(".tab-panel");
-const materialForm          = document.querySelector("#material-form");
-const materialList          = document.querySelector("#material-list");
-
-// State
+// ── State ──
 const state = loadState();
+let timerInterval = null;
+let pinResolve = null;
 
 function createDefaultState() {
   return {
     activeTableId:    TABLE_DEFINITIONS[0].id,
     selectedTableIds: [TABLE_DEFINITIONS[0].id],
-    tables:      TABLE_DEFINITIONS.map(t => ({ ...t, orders: [], mergeGroupId: null })),
+    tables:      TABLE_DEFINITIONS.map(t => ({ ...t, orders:[], mergeGroupId:null, seatedAt:null })),
     mergeGroups: [],
     materials:   [],
+    menus:       DEFAULT_MENUS.map(m => ({...m})),
+    activeTab:   "orders",
   };
 }
 
 function loadState() {
-  const fallback = createDefaultState();
-  const saved    = localStorage.getItem(STORAGE_KEY);
-  if (!saved) return fallback;
+  const fb = createDefaultState();
+  const saved = localStorage.getItem(STORAGE_KEY);
+  if (!saved) return fb;
   try {
     const p = JSON.parse(saved);
-    if (!p || !Array.isArray(p.tables)) return fallback;
-
+    if (!p || !Array.isArray(p.tables)) return fb;
     const tables = TABLE_DEFINITIONS.map(def => {
       const s = p.tables.find(t => t.id === def.id);
-      return { ...def, orders: Array.isArray(s?.orders) ? s.orders : [], mergeGroupId: s?.mergeGroupId ?? null };
+      return { ...def, orders: Array.isArray(s?.orders) ? s.orders : [], mergeGroupId: s?.mergeGroupId ?? null, seatedAt: s?.seatedAt ?? null };
     });
     const mergeGroups = Array.isArray(p.mergeGroups)
-      ? p.mergeGroups.filter(g => typeof g.id === "string" && Array.isArray(g.tableIds) && g.tableIds.length > 1) : [];
-    const activeTableId = TABLE_DEFINITIONS.some(t => t.id === p.activeTableId) ? p.activeTableId : fallback.activeTableId;
-    const selectedTableIds = (Array.isArray(p.selectedTableIds)
-      ? p.selectedTableIds.filter(id => TABLE_DEFINITIONS.some(t => t.id === id)) : [activeTableId]);
-
+      ? p.mergeGroups.filter(g => typeof g.id==="string" && Array.isArray(g.tableIds) && g.tableIds.length>1) : [];
+    const activeTableId = TABLE_DEFINITIONS.some(t=>t.id===p.activeTableId) ? p.activeTableId : fb.activeTableId;
+    const sel = Array.isArray(p.selectedTableIds) ? p.selectedTableIds.filter(id=>TABLE_DEFINITIONS.some(t=>t.id===id)) : [activeTableId];
     return {
       activeTableId,
-      selectedTableIds: selectedTableIds.length ? selectedTableIds : [activeTableId],
+      selectedTableIds: sel.length ? sel : [activeTableId],
       tables, mergeGroups,
       materials: Array.isArray(p.materials) ? p.materials : [],
+      menus: Array.isArray(p.menus) && p.menus.length ? p.menus : fb.menus,
+      activeTab: p.activeTab || "orders",
     };
-  } catch { return fallback; }
+  } catch { return fb; }
 }
 
 function saveState() { localStorage.setItem(STORAGE_KEY, JSON.stringify(state)); }
 
-// Helpers
-function formatCurrency(v) { return `${Number(v).toLocaleString("ko-KR")}원`; }
-function formatDateShort(iso) { return new Date(iso).toLocaleDateString("ko-KR", { month: "2-digit", day: "2-digit" }); }
-function nowISO() { return new Date().toISOString(); }
-function getTableById(id) { return state.tables.find(t => t.id === id); }
-function getMergeGroupById(id) { return state.mergeGroups.find(g => g.id === id); }
-function getGroupForTable(id) { const t = getTableById(id); return t?.mergeGroupId ? getMergeGroupById(t.mergeGroupId) : null; }
-function getSharedTableIds(id) { const g = getGroupForTable(id); return g ? g.tableIds : [id]; }
-function getSharedOrders(id) { const s = getTableById(getSharedTableIds(id)[0]); return s ? s.orders : []; }
-function calcOrdersTotal(orders) { return orders.reduce((s, o) => s + o.price * o.qty, 0); }
-function calcTableTotal(id) { return calcOrdersTotal(getSharedOrders(id)); }
-function getDisplayName(id) { const t = getTableById(id), g = getGroupForTable(id); return g ? g.name : t?.name ?? ""; }
-function getRepresentativeTable(id) { return getTableById(getSharedTableIds(id)[0]); }
-function getShortTableName(id) {
-  const t = getTableById(id); if (!t) return "";
-  return t.name.replace("홀 좌측 ","좌").replace("홀 가운데 ","중").replace("홀 우측 ","우")
-               .replace("작은방 1-","작은1-").replace("작은방 2-","작은2-");
+// ── Helpers ──
+const fmt  = v => `${Number(v).toLocaleString("ko-KR")}원`;
+const nowISO = () => new Date().toISOString();
+const esc  = s => String(s).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;").replace(/"/g,"&quot;");
+
+function getTableById(id)       { return state.tables.find(t=>t.id===id); }
+function getMergeGroupById(id)  { return state.mergeGroups.find(g=>g.id===id); }
+function getGroupForTable(id)   { const t=getTableById(id); return t?.mergeGroupId ? getMergeGroupById(t.mergeGroupId) : null; }
+function getSharedTableIds(id)  { const g=getGroupForTable(id); return g ? g.tableIds : [id]; }
+function getSharedOrders(id)    { const s=getTableById(getSharedTableIds(id)[0]); return s ? s.orders : []; }
+function calcTotal(orders)      { return orders.reduce((s,o)=>s+o.price*o.qty,0); }
+function calcTableTotal(id)     { return calcTotal(getSharedOrders(id)); }
+function getDisplayName(id)     { const t=getTableById(id),g=getGroupForTable(id); return g?g.name:t?.name??""; }
+function getRepTable(id)        { return getTableById(getSharedTableIds(id)[0]); }
+function getShortName(id) {
+  const t=getTableById(id); if(!t) return "";
+  return t.name.replace("홀 좌측 ","좌").replace("홀 가운데 ","중").replace("홀 우측 ","우").replace("작은방 1-","소1-").replace("작은방 2-","소2-");
 }
 
-// Sheets API
+function elapsedStr(iso) {
+  if (!iso) return "";
+  const mins = Math.floor((Date.now()-new Date(iso).getTime())/60000);
+  if (mins < 60) return `${mins}분`;
+  return `${Math.floor(mins/60)}시간 ${mins%60}분`;
+}
+
+// ── Sheets ──
 async function sendToSheet(payload) {
   if (!SHEET_WEBHOOK_URL) return;
-  try {
-    await fetch(SHEET_WEBHOOK_URL, { method:"POST", headers:{"Content-Type":"text/plain"}, body: JSON.stringify(payload) });
-  } catch (_) {}
+  try { await fetch(SHEET_WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify(payload)}); } catch(_){}
 }
 
-function setSyncStatus(text, type) {
-  if (!syncStatus) return;
-  syncStatus.textContent = text;
-  syncStatus.className   = `sync-status${type ? " sync-status--"+type : ""}`;
-  syncStatus.hidden      = !text;
+function setSyncStatus(text,type) {
+  const el = document.querySelector("#sync-status");
+  if (!el) return;
+  el.textContent = text;
+  el.className   = `sync-status${type?" sync-status--"+type:""}`;
+  el.hidden      = !text;
 }
 
-// 결제 완료
+// ── PIN ──
+function showPinModal(title="PIN을 입력하세요") {
+  return new Promise(resolve => {
+    pinResolve = resolve;
+    const modal = document.querySelector("#pin-modal");
+    document.querySelector("#pin-title").textContent = title;
+    document.querySelector("#pin-display").textContent = "----";
+    document.querySelector("#pin-error").textContent = "";
+    modal.dataset.input = "";
+    modal.hidden = false;
+  });
+}
+
+function updatePinDisplay(val) {
+  const d = document.querySelector("#pin-display");
+  d.textContent = val.padEnd(4,"·").split("").join(" ");
+}
+
+document.querySelector("#pin-modal").addEventListener("click", e => {
+  const btn = e.target.closest("[data-pin]");
+  if (!btn) return;
+  const modal = document.querySelector("#pin-modal");
+  const key   = btn.dataset.pin;
+  if (key === "cancel") { modal.hidden=true; if(pinResolve){pinResolve(false);pinResolve=null;} return; }
+  if (key === "del") {
+    modal.dataset.input = modal.dataset.input.slice(0,-1);
+    updatePinDisplay(modal.dataset.input);
+    return;
+  }
+  modal.dataset.input = (modal.dataset.input+key).slice(0,4);
+  updatePinDisplay(modal.dataset.input);
+  if (modal.dataset.input.length===4) {
+    if (modal.dataset.input===PIN_CODE) {
+      modal.hidden=true;
+      if(pinResolve){pinResolve(true);pinResolve=null;}
+    } else {
+      document.querySelector("#pin-error").textContent = "PIN이 틀렸습니다";
+      modal.dataset.input="";
+      updatePinDisplay("");
+    }
+  }
+});
+
+// ── Checkout ──
 async function checkoutActiveTable() {
   const orders = getSharedOrders(state.activeTableId);
   if (!orders.length) { alert("주문 내역이 없습니다."); return; }
+  const ok = await showPinModal("결제 확인 — PIN 입력");
+  if (!ok) return;
   const tableName = getDisplayName(state.activeTableId);
   const total     = calcTableTotal(state.activeTableId);
-  if (!confirm(`${tableName}\n합계: ${formatCurrency(total)}\n\n결제 완료 처리할까요?\n(주문 내역이 초기화됩니다)`)) return;
+  showReceipt(tableName, orders, total);
+}
 
-  setSyncStatus("전송 중…", "pending");
+function showReceipt(tableName, orders, total) {
+  const modal = document.querySelector("#receipt-modal");
+  const now   = new Date();
+  const dateStr = now.toLocaleDateString("ko-KR",{year:"numeric",month:"2-digit",day:"2-digit"});
+  const timeStr = now.toLocaleTimeString("ko-KR",{hour:"2-digit",minute:"2-digit"});
+  let rows = orders.map(o=>`
+    <tr><td>${esc(o.name)}</td><td class="rc-num">${o.qty}</td><td class="rc-num">${fmt(o.price)}</td><td class="rc-num">${fmt(o.price*o.qty)}</td></tr>
+  `).join("");
+  document.querySelector("#receipt-content").innerHTML = `
+    <div class="rc-header">
+      <div class="rc-logo">🍗</div>
+      <h2>영수증</h2>
+      <p>${esc(tableName)} · ${dateStr} ${timeStr}</p>
+    </div>
+    <table class="rc-table">
+      <thead><tr><th>메뉴</th><th class="rc-num">수량</th><th class="rc-num">단가</th><th class="rc-num">금액</th></tr></thead>
+      <tbody>${rows}</tbody>
+    </table>
+    <div class="rc-total">합계: <strong>${fmt(total)}</strong></div>`;
+  modal.hidden = false;
+  modal.dataset.tableName = tableName;
+  modal.dataset.total     = total;
+  modal.dataset.orders    = JSON.stringify(orders);
+}
+
+document.querySelector("#receipt-print").addEventListener("click", () => window.print());
+document.querySelector("#receipt-confirm").addEventListener("click", async () => {
+  const modal     = document.querySelector("#receipt-modal");
+  const tableName = modal.dataset.tableName;
+  const total     = Number(modal.dataset.total);
+  const orders    = JSON.parse(modal.dataset.orders);
+  modal.hidden    = true;
+
+  setSyncStatus("전송 중…","pending");
   if (SHEET_WEBHOOK_URL) {
     try {
-      const res  = await fetch(SHEET_WEBHOOK_URL, {
-        method: "POST", headers: { "Content-Type": "text/plain" },
-        body: JSON.stringify({ action: "checkout", tableName, orders, total, checkedOutAt: nowISO() }),
-      });
+      const res  = await fetch(SHEET_WEBHOOK_URL,{method:"POST",headers:{"Content-Type":"text/plain"},body:JSON.stringify({action:"checkout",tableName,orders,total,checkedOutAt:nowISO()})});
       const data = await res.json();
-      setSyncStatus(data.ok ? "시트 기록 완료 ✓" : `오류: ${data.error}`, data.ok ? "ok" : "error");
-    } catch { setSyncStatus("네트워크 오류", "error"); }
-  } else {
-    setSyncStatus("URL 미설정 — 로컬만 저장", "warn");
-  }
-  getRepresentativeTable(state.activeTableId).orders = [];
+      setSyncStatus(data.ok?"시트 기록 완료 ✓":`오류: ${data.error}`, data.ok?"ok":"error");
+    } catch { setSyncStatus("네트워크 오류","error"); }
+  } else { setSyncStatus("URL 미설정","warn"); }
+
+  const holder = getRepTable(state.activeTableId);
+  holder.orders   = [];
+  holder.seatedAt = null;
   saveState(); render();
-  setTimeout(() => setSyncStatus("", ""), 4000);
-}
+  setTimeout(()=>setSyncStatus("",""),4000);
+});
+document.querySelector("#receipt-cancel").addEventListener("click", () => {
+  document.querySelector("#receipt-modal").hidden = true;
+});
 
-// Render — Tables
-function renderTables() {
-  zoneSections.innerHTML = "";
-  ZONES.forEach(zone => {
-    const section = document.createElement("section");
-    section.className = "zone-block";
-    section.innerHTML = `<div class="zone-header"><p class="section-label">${zone.label}</p><h3>${zone.description}</h3></div>`;
-    const grid = document.createElement("div");
-    grid.className = "tables-grid";
-    state.tables.filter(t => t.zone === zone.id).forEach(table => {
-      const frag     = tableCardTemplate.content.cloneNode(true);
-      const btn      = frag.querySelector(".table-card");
-      const selBtn   = frag.querySelector(".table-select");
-      const shOrders = getSharedOrders(table.id);
-      const waiting  = shOrders.filter(o => !o.served).length;
-      const group    = getGroupForTable(table.id);
-      frag.querySelector(".table-card__name").textContent  = table.name;
-      frag.querySelector(".table-card__total").textContent = formatCurrency(calcTableTotal(table.id));
-      frag.querySelector(".table-card__meta").textContent  =
-        shOrders.length === 0 ? "주문 없음" : `총 ${shOrders.length}건 · 대기 ${waiting}건`;
-      frag.querySelector(".table-card__merge").textContent = group ? `묶음: ${group.name}` : "개별 사용";
-      if (table.id === state.activeTableId) btn.classList.add("is-active");
-      if (state.selectedTableIds.includes(table.id)) { selBtn.classList.add("is-selected"); selBtn.textContent = "선택됨"; }
-      btn.addEventListener("click", () => {
-        state.activeTableId = table.id;
-        if (!state.selectedTableIds.includes(table.id)) state.selectedTableIds = [table.id];
-        saveState(); render();
-      });
-      selBtn.addEventListener("click", e => { e.stopPropagation(); toggleSelection(table.id); });
-      grid.appendChild(frag);
-    });
-    section.appendChild(grid);
-    zoneSections.appendChild(section);
-  });
-}
+// ── Reset (PIN protected) ──
+document.querySelector("#reset-button").addEventListener("click", async () => {
+  const ok = await showPinModal("전체 초기화 — PIN 입력");
+  if (!ok) return;
+  if (!confirm("모든 테이블 주문을 초기화할까요?")) return;
+  const next = createDefaultState();
+  Object.assign(state,{activeTableId:next.activeTableId,selectedTableIds:next.selectedTableIds,tables:next.tables,mergeGroups:next.mergeGroups});
+  saveState(); render();
+});
 
-// Render — Orders
-function renderOrders() {
-  const orders = getSharedOrders(state.activeTableId);
-  activeTableTitle.textContent = getDisplayName(state.activeTableId);
-  orderCount.textContent       = `${orders.length}건`;
-  tableTotal.textContent       = formatCurrency(calcTableTotal(state.activeTableId));
-  orderList.innerHTML          = "";
-  if (checkoutButton) checkoutButton.disabled = !orders.length;
-  if (!orders.length) {
-    const li = document.createElement("li"); li.className = "empty-state"; li.textContent = "아직 주문이 없습니다.";
-    orderList.appendChild(li); return;
-  }
-  orders.forEach(order => {
-    const frag   = orderItemTemplate.content.cloneNode(true);
-    const badge  = frag.querySelector(".status-badge");
-    const toggle = frag.querySelector(".order-toggle");
-    const del    = frag.querySelector(".order-delete");
-    frag.querySelector(".order-item__name").textContent = order.name;
-    frag.querySelector(".order-item__meta").textContent =
-      `${formatCurrency(order.price)} · ${order.qty}개 · ${formatCurrency(order.price * order.qty)}`;
-    badge.textContent  = order.served ? "서빙완료" : "대기중";
-    badge.className    = `status-badge ${order.served ? "is-served" : "is-waiting"}`;
-    toggle.textContent = order.served ? "대기로 변경" : "서빙완료";
-    toggle.addEventListener("click", () => { order.served = !order.served; saveState(); render(); });
-    del.addEventListener("click", () => {
-      sendToSheet({ action:"orderDelete", tableName: getDisplayName(state.activeTableId), order, timestamp: nowISO() });
-      const holder = getRepresentativeTable(state.activeTableId);
-      holder.orders = holder.orders.filter(i => i.id !== order.id);
-      saveState(); render();
-    });
-    orderList.appendChild(frag);
-  });
-}
-
-// Render — Summary
-function renderSummary() {
-  const seen = new Set(); let seats = 0, total = 0;
+// ── KDS (주방 뷰) ──
+function renderKDS() {
+  const container = document.querySelector("#kds-list");
+  if (!container) return;
+  container.innerHTML = "";
+  const seen = new Set();
+  let anyOrder = false;
   state.tables.forEach(t => {
     const key = t.mergeGroupId ?? t.id;
-    if (seen.has(key)) return; seen.add(key);
-    const orders = getSharedOrders(t.id);
-    if (orders.length) seats++;
-    total += calcOrdersTotal(orders);
+    if (seen.has(key)) return;
+    seen.add(key);
+    const orders   = getSharedOrders(t.id).filter(o=>!o.served);
+    if (!orders.length) return;
+    anyOrder = true;
+    const card = document.createElement("div");
+    card.className = "kds-card";
+    card.innerHTML = `
+      <div class="kds-table-name">${esc(getDisplayName(t.id))}</div>
+      ${orders.map(o=>`
+        <div class="kds-item">
+          <span class="kds-qty">×${o.qty}</span>
+          <span class="kds-name">${esc(o.name)}</span>
+          ${o.memo ? `<span class="kds-memo">${esc(o.memo)}</span>` : ""}
+          <button class="kds-done" data-table="${t.id}" data-order="${o.id}">완료</button>
+        </div>`).join("")}`;
+    container.appendChild(card);
   });
-  openTableCount.textContent = `${seats}개 좌석 그룹 사용 중`;
-  salesTotal.textContent     = `총 주문 금액 ${formatCurrency(total)}`;
+  if (!anyOrder) container.innerHTML = `<div class="empty-state" style="grid-column:1/-1">대기 중인 주문이 없습니다</div>`;
+
+  container.querySelectorAll(".kds-done").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const orders = getSharedOrders(btn.dataset.table);
+      const order  = orders.find(o=>o.id===btn.dataset.order);
+      if (order) { order.served=true; saveState(); render(); }
+    });
+  });
 }
 
-// Render — Merge controls
-function renderMergeControls() {
-  selectedTableCount.textContent = `${state.selectedTableIds.length}개 선택`;
-  tableSelectionSummary.textContent =
-    state.selectedTableIds.map(id => getTableById(id)?.name).filter(Boolean).join(", ")
-    || "테이블을 선택하면 단체석으로 묶을 수 있습니다.";
-  const ag = getGroupForTable(state.activeTableId);
-  mergeStatus.textContent = ag
-    ? `${ag.name} 사용 중 · ${ag.tableIds.map(id => getTableById(id)?.name).filter(Boolean).join(", ")}`
-    : "현재 선택한 테이블은 개별 사용 중입니다.";
-  unmergeButton.disabled = !ag;
-  mergeButton.disabled   = state.selectedTableIds.length < 2;
-}
-
-// Render — Materials
-function renderMaterials() {
-  if (!materialList) return;
-  materialList.innerHTML = "";
-  if (!state.materials.length) {
-    materialList.innerHTML = `<li class="empty-state">입력된 원재료가 없습니다.</li>`; return;
-  }
-  const totalCost = state.materials.reduce((s, m) => s + (Number(m.price)||0), 0);
-  const summary   = document.createElement("div");
-  summary.className = "material-summary";
-  summary.innerHTML = `<span>총 원재료비</span><strong>${formatCurrency(totalCost)}</strong>`;
-  materialList.appendChild(summary);
-  [...state.materials].reverse().forEach(mat => {
+// ── Menu Management ──
+function renderMenuManage() {
+  const list = document.querySelector("#menu-manage-list");
+  if (!list) return;
+  list.innerHTML = "";
+  state.menus.forEach(menu=>{
     const li = document.createElement("li");
-    li.className = "order-item";
-    li.innerHTML = `
+    li.className="menu-manage-item";
+    li.innerHTML=`
+      <span class="menu-manage-name">${esc(menu.name)}</span>
+      <span class="menu-manage-price">${fmt(menu.price)}</span>
+      <button class="ghost-button menu-edit-btn" data-id="${menu.id}" type="button">수정</button>
+      <button class="ghost-button menu-del-btn"  data-id="${menu.id}" type="button">삭제</button>`;
+    list.appendChild(li);
+  });
+  list.querySelectorAll(".menu-del-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      if (!confirm("이 메뉴를 삭제할까요?")) return;
+      state.menus = state.menus.filter(m=>m.id!==btn.dataset.id);
+      saveState(); renderMenuManage(); syncMenuSelects();
+    });
+  });
+  list.querySelectorAll(".menu-edit-btn").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      const menu = state.menus.find(m=>m.id===btn.dataset.id);
+      if (!menu) return;
+      const newName  = prompt("메뉴 이름:", menu.name);
+      if (!newName) return;
+      const newPrice = parseInt(prompt("가격:", menu.price),10);
+      if (isNaN(newPrice)) return;
+      menu.name  = newName.trim();
+      menu.price = newPrice;
+      saveState(); renderMenuManage(); syncMenuSelects();
+    });
+  });
+}
+
+function syncMenuSelects() {
+  const sel = document.querySelector("#menu-select");
+  if (!sel) return;
+  sel.innerHTML = state.menus.map(m=>`<option value="${esc(m.name)}">${esc(m.name)}</option>`).join("");
+  syncPriceWithMenu();
+  renderQuickMenu();
+}
+
+function renderQuickMenu() {
+  const container = document.querySelector(".quick-menu");
+  if (!container) return;
+  container.innerHTML = state.menus.map(m=>`
+    <button class="chip" data-name="${esc(m.name)}" data-price="${m.price}" type="button">${esc(m.name)}</button>`).join("");
+  container.querySelectorAll(".chip").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      document.querySelector("#menu-select").value = btn.dataset.name;
+      document.querySelector("#menu-price").value  = btn.dataset.price;
+      document.querySelector("#menu-qty").focus();
+    });
+  });
+}
+
+document.querySelector("#menu-add-form").addEventListener("submit", e=>{
+  e.preventDefault();
+  const fd    = new FormData(e.target);
+  const name  = String(fd.get("newMenuName")).trim();
+  const price = parseInt(fd.get("newMenuPrice"),10);
+  if (!name || isNaN(price)) return;
+  state.menus.push({ id:crypto.randomUUID(), name, price });
+  saveState(); renderMenuManage(); syncMenuSelects();
+  e.target.reset();
+});
+
+// ── Render Tables ──
+function makeTableCard(table) {
+  const tmpl     = document.querySelector("#table-card-template").content.cloneNode(true);
+  const btn      = tmpl.querySelector(".table-card");
+  const selBtn   = tmpl.querySelector(".table-select");
+  const shOrders = getSharedOrders(table.id);
+  const waiting  = shOrders.filter(o=>!o.served).length;
+  const group    = getGroupForTable(table.id);
+  const repT     = getRepTable(table.id);
+  const elapsed  = repT?.seatedAt ? elapsedStr(repT.seatedAt) : "";
+
+  tmpl.querySelector(".table-card__name").textContent  = table.name;
+  tmpl.querySelector(".table-card__total").textContent = fmt(calcTableTotal(table.id));
+  tmpl.querySelector(".table-card__meta").textContent  = shOrders.length===0 ? "빈 테이블" : `${shOrders.length}건\n대기 ${waiting}건${elapsed?"\n"+elapsed:""}`;
+  tmpl.querySelector(".table-card__merge").textContent = group?`묶음`:"";
+
+  if (shOrders.length > 0) btn.classList.add("is-occupied");
+  if (waiting > 0)         btn.classList.add("has-waiting");
+  if (table.id===state.activeTableId) btn.classList.add("is-active");
+  if (state.selectedTableIds.includes(table.id)) { selBtn.classList.add("is-selected"); selBtn.textContent="✓"; }
+
+  btn.addEventListener("click",()=>{
+    state.activeTableId=table.id;
+    if (!state.selectedTableIds.includes(table.id)) state.selectedTableIds=[table.id];
+    saveState(); render();
+  });
+  selBtn.addEventListener("click",e=>{e.stopPropagation();toggleSelection(table.id);});
+  return tmpl;
+}
+
+function renderTables() {
+  // 홀: 세로 열
+  ["hall-left","hall-center","hall-right"].forEach(zoneId=>{
+    const col = document.querySelector(`#col-${zoneId}`);
+    if (!col) return;
+    // label 제외하고 카드만 제거
+    col.querySelectorAll(".table-card").forEach(el=>el.closest("div.card-wrap")?.remove() || el.remove());
+    state.tables.filter(t=>t.zone===zoneId).forEach(table=>{
+      col.appendChild(makeTableCard(table));
+    });
+  });
+  // 방: 가로 줄
+  ["room-large","room-small-1","room-small-2"].forEach(zoneId=>{
+    const group = document.querySelector(`#col-${zoneId}`);
+    if (!group) return;
+    const row = group.querySelector(".room-row");
+    if (!row) return;
+    row.innerHTML="";
+    state.tables.filter(t=>t.zone===zoneId).forEach(table=>{
+      row.appendChild(makeTableCard(table));
+    });
+  });
+}
+
+// ── Render Orders ──
+function renderOrders() {
+  const orders    = getSharedOrders(state.activeTableId);
+  const orderList = document.querySelector("#order-list");
+  document.querySelector("#active-table-title").textContent = getDisplayName(state.activeTableId);
+  document.querySelector("#order-count").textContent  = `${orders.length}건`;
+  document.querySelector("#table-total").textContent  = fmt(calcTableTotal(state.activeTableId));
+  orderList.innerHTML="";
+  const chkBtn = document.querySelector("#checkout-button");
+  if (chkBtn) chkBtn.disabled = !orders.length;
+
+  if (!orders.length) {
+    orderList.innerHTML=`<li class="empty-state">아직 주문이 없습니다</li>`; return;
+  }
+  orders.forEach(order=>{
+    const li = document.createElement("li");
+    li.className="order-item";
+    li.innerHTML=`
       <div class="order-item__main">
-        <div>
-          <strong class="order-item__name">${mat.name}</strong>
-          <p class="order-item__meta">${formatDateShort(mat.date)} · ${mat.qty}${mat.unit||""} · ${formatCurrency(mat.price)}${mat.memo ? " · "+mat.memo : ""}</p>
+        <div class="order-item__info">
+          <strong class="order-item__name">${esc(order.name)}</strong>
+          <div class="order-item__edit">
+            <button class="qty-btn" data-delta="-1" data-id="${order.id}" type="button">−</button>
+            <span class="qty-val">${order.qty}</span>
+            <button class="qty-btn" data-delta="1"  data-id="${order.id}" type="button">+</button>
+          </div>
+          <p class="order-item__meta">${fmt(order.price)} × ${order.qty} = ${fmt(order.price*order.qty)}</p>
+          ${order.memo?`<p class="order-item__memo">📝 ${esc(order.memo)}</p>`:""}
         </div>
+        <span class="status-badge ${order.served?"is-served":"is-waiting"}">${order.served?"서빙완료":"대기중"}</span>
+      </div>
+      <div class="order-item__actions">
+        <button class="ghost-button order-toggle" type="button">${order.served?"대기로":"서빙완료"}</button>
+        <button class="ghost-button order-memo"   type="button" data-id="${order.id}">메모</button>
+        <button class="ghost-button order-delete" type="button" data-id="${order.id}">삭제</button>
+      </div>`;
+    orderList.appendChild(li);
+
+    // qty buttons
+    li.querySelectorAll(".qty-btn").forEach(btn=>{
+      btn.addEventListener("click",()=>{
+        const delta = Number(btn.dataset.delta);
+        const newQty = order.qty + delta;
+        if (newQty < 1) return;
+        order.qty = newQty;
+        sendToSheet({action:"orderEdit",tableName:getDisplayName(state.activeTableId),order,timestamp:nowISO()});
+        saveState(); render();
+      });
+    });
+    // toggle
+    li.querySelector(".order-toggle").addEventListener("click",()=>{
+      order.served=!order.served; saveState(); render();
+    });
+    // memo
+    li.querySelector(".order-memo").addEventListener("click",()=>{
+      const memo = prompt("메모 입력:", order.memo||"");
+      if (memo===null) return;
+      order.memo = memo.trim();
+      saveState(); render();
+    });
+    // delete
+    li.querySelector(".order-delete").addEventListener("click",()=>{
+      sendToSheet({action:"orderDelete",tableName:getDisplayName(state.activeTableId),order,timestamp:nowISO()});
+      const holder = getRepTable(state.activeTableId);
+      holder.orders=holder.orders.filter(i=>i.id!==order.id);
+      if (!holder.orders.length) holder.seatedAt=null;
+      saveState(); render();
+    });
+  });
+}
+
+// ── Render Summary ──
+function renderSummary() {
+  const seen=new Set(); let seats=0, total=0;
+  state.tables.forEach(t=>{
+    const key=t.mergeGroupId??t.id;
+    if (seen.has(key)) return; seen.add(key);
+    const orders=getSharedOrders(t.id);
+    if (orders.length) seats++;
+    total+=calcTotal(orders);
+  });
+  document.querySelector("#open-table-count").textContent=`${seats}개 테이블 사용 중`;
+  document.querySelector("#sales-total").textContent=`총 ${fmt(total)}`;
+}
+
+// ── Render Merge ──
+function renderMergeControls() {
+  document.querySelector("#selected-table-count").textContent=`${state.selectedTableIds.length}개 선택`;
+  document.querySelector("#table-selection-summary").textContent=
+    state.selectedTableIds.map(id=>getTableById(id)?.name).filter(Boolean).join(", ") || "테이블을 선택하면 단체석으로 묶을 수 있습니다.";
+  const ag=getGroupForTable(state.activeTableId);
+  document.querySelector("#merge-status").textContent=ag
+    ?`${ag.name} · ${ag.tableIds.map(id=>getTableById(id)?.name).filter(Boolean).join(", ")}`
+    :"현재 선택한 테이블은 개별 사용 중입니다.";
+  document.querySelector("#unmerge-button").disabled=!ag;
+  document.querySelector("#merge-button").disabled=state.selectedTableIds.length<2;
+}
+
+// ── Render Materials ──
+function renderMaterials() {
+  const list = document.querySelector("#material-list");
+  if (!list) return;
+  list.innerHTML="";
+  if (!state.materials.length) { list.innerHTML=`<li class="empty-state">입력된 원재료가 없습니다</li>`; return; }
+  const totalCost=state.materials.reduce((s,m)=>s+(Number(m.price)||0),0);
+  const summary=document.createElement("div");
+  summary.className="material-summary";
+  summary.innerHTML=`<span>총 원재료비</span><strong>${fmt(totalCost)}</strong>`;
+  list.appendChild(summary);
+  [...state.materials].reverse().forEach(mat=>{
+    const li=document.createElement("li");
+    li.className="order-item";
+    const d=new Date(mat.date).toLocaleDateString("ko-KR",{month:"2-digit",day:"2-digit"});
+    li.innerHTML=`
+      <div class="order-item__main">
+        <div><strong class="order-item__name">${esc(mat.name)}</strong>
+        <p class="order-item__meta">${d} · ${esc(mat.qty)}${esc(mat.unit||"")} · ${fmt(mat.price)}${mat.memo?" · "+esc(mat.memo):""}</p></div>
       </div>
       <div class="order-item__actions">
         <button class="ghost-button mat-delete" type="button" data-id="${mat.id}">삭제</button>
       </div>`;
-    materialList.appendChild(li);
+    list.appendChild(li);
   });
-  materialList.querySelectorAll(".mat-delete").forEach(btn => {
-    btn.addEventListener("click", () => {
-      state.materials = state.materials.filter(m => m.id !== btn.dataset.id);
+  list.querySelectorAll(".mat-delete").forEach(btn=>{
+    btn.addEventListener("click",()=>{
+      state.materials=state.materials.filter(m=>m.id!==btn.dataset.id);
       saveState(); renderMaterials();
     });
   });
 }
 
-function render() { renderTables(); renderOrders(); renderSummary(); renderMergeControls(); renderMaterials(); }
+function render() {
+  renderTables(); renderOrders(); renderSummary(); renderMergeControls();
+  renderMaterials(); renderKDS(); renderMenuManage();
+}
 
-// Merge / Unmerge
+// ── Tabs ──
+function switchTab(tabName) {
+  state.activeTab = tabName;
+  document.querySelectorAll(".tab-button").forEach(b=>b.classList.toggle("is-active",b.dataset.tab===tabName));
+  document.querySelectorAll(".tab-panel").forEach(p=>{ p.hidden = p.id!==`tab-${tabName}`; });
+}
+
+document.querySelectorAll(".tab-button").forEach(btn=>{
+  btn.addEventListener("click",()=>switchTab(btn.dataset.tab));
+});
+
+// ── Merge / Unmerge ──
 function toggleSelection(tableId) {
-  state.selectedTableIds = state.selectedTableIds.includes(tableId)
-    ? state.selectedTableIds.filter(id => id !== tableId) : [...state.selectedTableIds, tableId];
-  if (!state.selectedTableIds.length) state.selectedTableIds = [state.activeTableId];
+  state.selectedTableIds=state.selectedTableIds.includes(tableId)
+    ?state.selectedTableIds.filter(id=>id!==tableId):[...state.selectedTableIds,tableId];
+  if (!state.selectedTableIds.length) state.selectedTableIds=[state.activeTableId];
   saveState(); render();
 }
 function mergeSelectedTables() {
-  if (state.selectedTableIds.length < 2) return;
-  const cg = new Set(state.selectedTableIds.map(id => getTableById(id)?.mergeGroupId).filter(Boolean));
-  state.mergeGroups = state.mergeGroups.filter(g => !cg.has(g.id));
-  state.tables.forEach(t => { if (cg.has(t.mergeGroupId)) t.mergeGroupId = null; });
-  const repId = state.selectedTableIds[0], repTable = getTableById(repId);
-  const combined = [];
-  state.selectedTableIds.forEach((id, i) => { const t = getTableById(id); if (!t) return; combined.push(...t.orders); if (i>0) t.orders=[]; });
-  repTable.orders = combined;
-  const groupId = crypto.randomUUID();
-  state.mergeGroups.unshift({ id: groupId, name: `단체석 ${state.selectedTableIds.map(getShortTableName).filter(Boolean).join(" + ")}`, tableIds: [...state.selectedTableIds] });
-  state.selectedTableIds.forEach(id => { const t = getTableById(id); if (t) t.mergeGroupId = groupId; });
-  state.activeTableId = repId; state.selectedTableIds = [repId];
+  if (state.selectedTableIds.length<2) return;
+  const cg=new Set(state.selectedTableIds.map(id=>getTableById(id)?.mergeGroupId).filter(Boolean));
+  state.mergeGroups=state.mergeGroups.filter(g=>!cg.has(g.id));
+  state.tables.forEach(t=>{if(cg.has(t.mergeGroupId))t.mergeGroupId=null;});
+  const repId=state.selectedTableIds[0], repT=getTableById(repId);
+  const combined=[];
+  state.selectedTableIds.forEach((id,i)=>{const t=getTableById(id);if(!t)return;combined.push(...t.orders);if(i>0)t.orders=[];});
+  repT.orders=combined;
+  const groupId=crypto.randomUUID();
+  state.mergeGroups.unshift({id:groupId,name:`단체석 ${state.selectedTableIds.map(getShortName).filter(Boolean).join("+")}`,tableIds:[...state.selectedTableIds]});
+  state.selectedTableIds.forEach(id=>{const t=getTableById(id);if(t)t.mergeGroupId=groupId;});
+  state.activeTableId=repId; state.selectedTableIds=[repId];
   saveState(); render();
 }
 function unmergeActiveTable() {
-  const ag = getGroupForTable(state.activeTableId); if (!ag) return;
-  ag.tableIds.forEach(id => { const t = getTableById(id); if (t) t.mergeGroupId = null; });
-  state.mergeGroups = state.mergeGroups.filter(g => g.id !== ag.id);
-  state.selectedTableIds = [state.activeTableId];
+  const ag=getGroupForTable(state.activeTableId); if(!ag) return;
+  ag.tableIds.forEach(id=>{const t=getTableById(id);if(t)t.mergeGroupId=null;});
+  state.mergeGroups=state.mergeGroups.filter(g=>g.id!==ag.id);
+  state.selectedTableIds=[state.activeTableId];
   saveState(); render();
 }
+document.querySelector("#merge-button").addEventListener("click",mergeSelectedTables);
+document.querySelector("#unmerge-button").addEventListener("click",unmergeActiveTable);
 
-// Tab switching
-tabButtons.forEach(btn => {
-  btn.addEventListener("click", () => {
-    tabButtons.forEach(b => b.classList.remove("is-active"));
-    tabPanels.forEach(p => p.hidden = true);
-    btn.classList.add("is-active");
-    document.querySelector(`#tab-${btn.dataset.tab}`).hidden = false;
-  });
-});
-
-// Order form
+// ── Order form ──
 function syncPriceWithMenu() {
-  const f = MENU_ITEMS.find(i => i.name === menuSelect.value);
-  menuPriceInput.value = f ? f.price : "";
+  const sel=document.querySelector("#menu-select");
+  const menu=state.menus.find(m=>m.name===sel?.value);
+  if (document.querySelector("#menu-price")) document.querySelector("#menu-price").value=menu?menu.price:"";
 }
-orderForm.addEventListener("submit", e => {
+document.querySelector("#menu-select")?.addEventListener("change",syncPriceWithMenu);
+
+document.querySelector("#order-form").addEventListener("submit",e=>{
   e.preventDefault();
-  const fd = new FormData(orderForm);
-  const name = String(fd.get("menuName")).trim(), price = Number(fd.get("menuPrice")), qty = Number(fd.get("menuQty"));
-  if (!name || price < 0 || qty < 1) return;
-  const order = { id: crypto.randomUUID(), name, price, qty, served: false };
-  getRepresentativeTable(state.activeTableId).orders.unshift(order);
-  sendToSheet({ action:"orderAdd", tableName: getDisplayName(state.activeTableId), order, timestamp: nowISO() });
-  orderForm.reset();
-  document.querySelector("#menu-qty").value = 1;
-  syncPriceWithMenu(); saveState(); render();
-});
-menuSelect.addEventListener("change", syncPriceWithMenu);
-document.querySelectorAll(".chip").forEach(btn => {
-  btn.addEventListener("click", () => {
-    menuSelect.value = btn.dataset.name; menuPriceInput.value = btn.dataset.price;
-    document.querySelector("#menu-qty").focus();
-  });
-});
-
-// Material form
-if (materialForm) {
-  const matDateInput = materialForm.querySelector("#mat-date");
-  if (matDateInput) matDateInput.value = new Date().toISOString().slice(0,10);
-
-  materialForm.addEventListener("submit", async e => {
-    e.preventDefault();
-    const fd = new FormData(materialForm);
-    const mat = {
-      id: crypto.randomUUID(),
-      date:  String(fd.get("matDate")),
-      name:  String(fd.get("matName")).trim(),
-      qty:   String(fd.get("matQty")),
-      unit:  String(fd.get("matUnit") || ""),
-      price: Number(fd.get("matPrice")),
-      memo:  String(fd.get("matMemo") || ""),
-    };
-    if (!mat.name || mat.price < 0) return;
-    state.materials.push(mat);
-    saveState(); renderMaterials();
-    materialForm.reset();
-    if (matDateInput) matDateInput.value = new Date().toISOString().slice(0,10);
-    sendToSheet({ action:"materialAdd", ...mat });
-    setSyncStatus("원재료 시트 기록 ✓", "ok");
-    setTimeout(() => setSyncStatus("",""), 3000);
-  });
-}
-
-// Checkout & Reset
-if (checkoutButton) checkoutButton.addEventListener("click", checkoutActiveTable);
-mergeButton.addEventListener("click", mergeSelectedTables);
-unmergeButton.addEventListener("click", unmergeActiveTable);
-resetButton.addEventListener("click", () => {
-  const next = createDefaultState();
-  Object.assign(state, { activeTableId: next.activeTableId, selectedTableIds: next.selectedTableIds, tables: next.tables, mergeGroups: next.mergeGroups });
+  const fd=new FormData(e.target);
+  const name=String(fd.get("menuName")).trim(), price=Number(fd.get("menuPrice")), qty=Number(fd.get("menuQty")), memo=String(fd.get("menuMemo")||"").trim();
+  if (!name||price<0||qty<1) return;
+  const order={id:crypto.randomUUID(),name,price,qty,served:false,memo};
+  const holder=getRepTable(state.activeTableId);
+  if (!holder.seatedAt) holder.seatedAt=nowISO();
+  holder.orders.unshift(order);
+  sendToSheet({action:"orderAdd",tableName:getDisplayName(state.activeTableId),order,timestamp:nowISO()});
+  e.target.reset();
+  document.querySelector("#menu-qty").value=1;
+  syncMenuSelects();
   saveState(); render();
 });
 
-function updateAppMode() {
-  const sa = window.matchMedia("(display-mode: standalone)").matches || navigator.standalone === true;
-  document.body.classList.toggle("tablet-app", sa);
-  appMode.textContent = sa ? "태블릿 앱 모드" : "브라우저 모드";
-}
-function registerServiceWorker() {
-  if (!("serviceWorker" in navigator) || location.protocol === "file:") return;
-  navigator.serviceWorker.register("./sw.js").catch(() => { appMode.textContent = "캐시 미등록"; });
+// ── Material form ──
+const matDateInput=document.querySelector("#mat-date");
+if (matDateInput) matDateInput.value=new Date().toISOString().slice(0,10);
+document.querySelector("#material-form")?.addEventListener("submit",async e=>{
+  e.preventDefault();
+  const fd=new FormData(e.target);
+  const mat={id:crypto.randomUUID(),date:String(fd.get("matDate")),name:String(fd.get("matName")).trim(),qty:String(fd.get("matQty")),unit:String(fd.get("matUnit")||""),price:Number(fd.get("matPrice")),memo:String(fd.get("matMemo")||"")};
+  if (!mat.name||mat.price<0) return;
+  state.materials.push(mat);
+  saveState(); renderMaterials();
+  e.target.reset();
+  if (matDateInput) matDateInput.value=new Date().toISOString().slice(0,10);
+  sendToSheet({action:"materialAdd",...mat});
+  setSyncStatus("원재료 기록 ✓","ok");
+  setTimeout(()=>setSyncStatus("",""),3000);
+});
+
+// ── Checkout button ──
+document.querySelector("#checkout-button")?.addEventListener("click",checkoutActiveTable);
+
+// ── Timer ──
+function startTimer() {
+  if (timerInterval) clearInterval(timerInterval);
+  timerInterval=setInterval(()=>{ renderTables(); },60000);
 }
 
-syncPriceWithMenu();
+// ── PWA ──
+function updateAppMode() {
+  const sa=window.matchMedia("(display-mode: standalone)").matches||navigator.standalone===true;
+  document.body.classList.toggle("tablet-app",sa);
+  const el=document.querySelector("#app-mode");
+  if (el) el.textContent=sa?"앱 모드":"브라우저";
+}
+function registerSW() {
+  if (!("serviceWorker" in navigator)||location.protocol==="file:") return;
+  navigator.serviceWorker.register("./sw.js").catch(()=>{});
+}
+
+// ── Init ──
+syncMenuSelects();
+switchTab(state.activeTab);
 updateAppMode();
-registerServiceWorker();
+registerSW();
+startTimer();
 render();
