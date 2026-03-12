@@ -359,7 +359,8 @@ document.querySelector("#menu-add-form").addEventListener("submit", e=>{
 });
 
 // ── Render Tables ──
-function makeTableCard(table) {
+// ── Table Card Factory ──
+function makeTableCard(table, onClick) {
   const tmpl     = document.querySelector("#table-card-template").content.cloneNode(true);
   const btn      = tmpl.querySelector(".table-card");
   const selBtn   = tmpl.querySelector(".table-select");
@@ -369,47 +370,93 @@ function makeTableCard(table) {
   const repT     = getRepTable(table.id);
   const elapsed  = repT?.seatedAt ? elapsedStr(repT.seatedAt) : "";
 
-  tmpl.querySelector(".table-card__name").textContent  = table.name;
-  tmpl.querySelector(".table-card__total").textContent = fmt(calcTableTotal(table.id));
-  tmpl.querySelector(".table-card__meta").textContent  = shOrders.length===0 ? "빈 테이블" : `${shOrders.length}건\n대기 ${waiting}건${elapsed?"\n"+elapsed:""}`;
-  tmpl.querySelector(".table-card__merge").textContent = group?`묶음`:"";
+  btn.querySelector(".table-card__name").textContent  = table.name;
+  btn.querySelector(".table-card__total").textContent = shOrders.length ? fmt(calcTableTotal(table.id)) : "0원";
+  btn.querySelector(".table-card__meta").textContent  = shOrders.length===0 ? "빈 테이블" : `${shOrders.length}건 · 대기${waiting}${elapsed?" · "+elapsed:""}`;
+  btn.querySelector(".table-card__badge").textContent = group ? "묶음" : "";
 
   if (shOrders.length > 0) btn.classList.add("is-occupied");
   if (waiting > 0)         btn.classList.add("has-waiting");
   if (table.id===state.activeTableId) btn.classList.add("is-active");
-  if (state.selectedTableIds.includes(table.id)) { selBtn.classList.add("is-selected"); selBtn.textContent="✓"; }
+  if (state.selectedTableIds.includes(table.id)) { selBtn.classList.add("is-selected"); selBtn.textContent="✓선택"; }
 
-  btn.addEventListener("click",()=>{
-    state.activeTableId=table.id;
-    if (!state.selectedTableIds.includes(table.id)) state.selectedTableIds=[table.id];
-    saveState(); render();
-  });
-  selBtn.addEventListener("click",e=>{e.stopPropagation();toggleSelection(table.id);});
+  btn.addEventListener("click", ()=> onClick ? onClick(table.id) : selectTable(table.id));
+  selBtn.addEventListener("click", e=>{ e.stopPropagation(); toggleSelection(table.id); });
   return tmpl;
 }
 
+function selectTable(tableId) {
+  state.activeTableId = tableId;
+  if (!state.selectedTableIds.includes(tableId)) state.selectedTableIds = [tableId];
+  // 주문 탭으로 자동 전환
+  switchTab("orders");
+  saveState(); render();
+}
+
+// ── Room Popup ──
+function openRoomPopup(zoneId) {
+  const zoneLabels = {"room-large":"큰방","room-small-1":"작은방 1","room-small-2":"작은방 2"};
+  document.querySelector("#room-modal-title").textContent = zoneLabels[zoneId] || zoneId;
+  const container = document.querySelector("#room-modal-tables");
+  container.innerHTML = "";
+  state.tables.filter(t=>t.zone===zoneId).forEach(table=>{
+    const frag = makeTableCard(table, (tableId)=>{
+      selectTable(tableId);
+      document.querySelector("#room-modal").hidden = true;
+    });
+    container.appendChild(frag);
+  });
+  document.querySelector("#room-modal").hidden = false;
+}
+
+document.querySelector("#room-modal-close").addEventListener("click", ()=>{
+  document.querySelector("#room-modal").hidden = true;
+});
+document.querySelector("#room-modal").addEventListener("click", e=>{
+  if (e.target===e.currentTarget) e.currentTarget.hidden = true;
+});
+
+// 방 사이드바 버튼
+document.querySelectorAll(".room-zone-btn").forEach(btn=>{
+  btn.addEventListener("click", ()=> openRoomPopup(btn.dataset.zone));
+});
+
 function renderTables() {
-  // 홀: 세로 열
-  ["hall-left","hall-center","hall-right"].forEach(zoneId=>{
-    const col = document.querySelector(`#col-${zoneId}`);
+  // 홀 3열 렌더
+  const colMap = {"hall-left":"hall-col-left","hall-center":"hall-col-center","hall-right":"hall-col-right"};
+  Object.entries(colMap).forEach(([zoneId, colId])=>{
+    const col = document.querySelector(`#${colId}`);
     if (!col) return;
-    // label 제외하고 카드만 제거
-    col.querySelectorAll(".table-card").forEach(el=>el.closest("div.card-wrap")?.remove() || el.remove());
+    col.querySelectorAll(".table-card").forEach(el=>el.remove());
     state.tables.filter(t=>t.zone===zoneId).forEach(table=>{
       col.appendChild(makeTableCard(table));
     });
   });
-  // 방: 가로 줄
+
+  // 방 사이드바 메타 업데이트
   ["room-large","room-small-1","room-small-2"].forEach(zoneId=>{
-    const group = document.querySelector(`#col-${zoneId}`);
-    if (!group) return;
-    const row = group.querySelector(".room-row");
-    if (!row) return;
-    row.innerHTML="";
-    state.tables.filter(t=>t.zone===zoneId).forEach(table=>{
-      row.appendChild(makeTableCard(table));
-    });
+    const meta = document.querySelector(`#meta-${zoneId}`);
+    if (!meta) return;
+    const tables  = state.tables.filter(t=>t.zone===zoneId);
+    const occupied = tables.filter(t=>getSharedOrders(t.id).length>0).length;
+    const total    = tables.reduce((s,t)=>s+calcTableTotal(t.id),0);
+    const waiting  = tables.some(t=>getSharedOrders(t.id).some(o=>!o.served));
+    meta.textContent = occupied ? `${occupied}/${tables.length}석 · ${fmt(total)}` : "비어있음";
+    const btn = meta.closest(".room-zone-btn");
+    if (btn) {
+      btn.classList.toggle("room-occupied", occupied>0);
+      btn.classList.toggle("room-waiting",  waiting);
+    }
   });
+
+  // 방 팝업이 열려있으면 같이 갱신
+  const modal = document.querySelector("#room-modal");
+  if (!modal.hidden) {
+    const zoneLabels = {"큰방":"room-large","작은방 1":"room-small-1","작은방 2":"room-small-2"};
+    const title = document.querySelector("#room-modal-title").textContent;
+    const zoneId = zoneLabels[title];
+    if (zoneId) openRoomPopup(zoneId);
+  }
 }
 
 // ── Render Orders ──

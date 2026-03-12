@@ -44,6 +44,20 @@
   </div>
 </div>
 
+<!-- Room Popup Modal -->
+<div id="room-modal" class="modal-overlay" hidden>
+  <div class="modal-box room-modal-box">
+    <div class="room-modal-header">
+      <div>
+        <p class="section-label">Room</p>
+        <h2 id="room-modal-title">큰방</h2>
+      </div>
+      <button id="room-modal-close" class="ghost-button" type="button">✕ 닫기</button>
+    </div>
+    <div id="room-modal-tables" class="room-modal-tables"></div>
+  </div>
+</div>
+
 <div class="shell">
   <!-- Header -->
   <header class="hero">
@@ -64,58 +78,76 @@
       </div>
       <div class="summary-footer">
         <small id="app-mode" class="app-mode-badge">브라우저</small>
+        <button id="reset-button" class="danger-button" type="button">🔒 초기화</button>
       </div>
     </div>
   </header>
 
-  <main class="layout">
-    <!-- Left: Tables -->
-    <section class="panel tables-panel">
-      <div class="panel-header">
+  <!-- Main: 홀 + 방사이드바 + 주문패널 -->
+  <main class="main-layout">
+
+    <!-- 홀 영역 -->
+    <section class="hall-section panel">
+      <div class="hall-header">
         <div>
-          <p class="section-label">Tables</p>
-          <h2>테이블 현황</h2>
+          <p class="section-label">Hall</p>
+          <h2>홀</h2>
         </div>
-        <button id="reset-button" class="danger-button" type="button">🔒 초기화</button>
+        <div class="legend">
+          <span class="legend-item"><span class="legend-dot ld-empty"></span>빈 테이블</span>
+          <span class="legend-item"><span class="legend-dot ld-occupied"></span>사용 중</span>
+          <span class="legend-item"><span class="legend-dot ld-waiting"></span>대기 주문</span>
+        </div>
       </div>
 
-      <!-- Merge -->
+      <!-- 홀 3열 그리드 -->
+      <div class="hall-grid">
+        <div class="hall-col" id="hall-col-left">
+          <p class="col-label">좌측</p>
+          <!-- JS가 채움 -->
+        </div>
+        <div class="hall-col" id="hall-col-center">
+          <p class="col-label">가운데</p>
+        </div>
+        <div class="hall-col" id="hall-col-right">
+          <p class="col-label">우측</p>
+        </div>
+      </div>
+
+      <!-- Merge 패널 -->
       <div class="merge-panel">
         <div class="merge-info">
-          <p class="section-label">Merge</p>
-          <h3 id="selected-table-count">1개 선택</h3>
-          <p id="table-selection-summary" class="merge-copy">테이블을 선택하면 단체석으로 묶을 수 있습니다.</p>
-          <p id="merge-status" class="merge-copy muted"></p>
+          <span class="section-label">Merge</span>
+          <span id="selected-table-count" class="merge-count">1개 선택</span>
+          <span id="table-selection-summary" class="merge-copy">테이블을 선택하면 단체석으로 묶을 수 있습니다.</span>
+          <span id="merge-status" class="merge-copy muted"></span>
         </div>
         <div class="merge-actions">
           <button id="merge-button"   class="primary-button" type="button">묶기</button>
           <button id="unmerge-button" class="ghost-button"   type="button">해제</button>
         </div>
       </div>
-
-      <!-- Zone legend -->
-      <div class="zone-legend">
-        <span class="legend-item"><span class="legend-dot empty"></span>빈 테이블</span>
-        <span class="legend-item"><span class="legend-dot occupied"></span>사용 중</span>
-        <span class="legend-item"><span class="legend-dot waiting"></span>대기 주문</span>
-      </div>
-
-      <div class="floormap">
-        <div class="floormap-hall">
-          <div class="floormap-col" id="col-hall-left"><p class="floormap-col-label">홀 좌측</p></div>
-          <div class="floormap-col" id="col-hall-center"><p class="floormap-col-label">홀 가운데</p></div>
-          <div class="floormap-col" id="col-hall-right"><p class="floormap-col-label">홀 우측</p></div>
-        </div>
-        <div class="floormap-rooms">
-          <div class="floormap-room-group" id="col-room-large"><p class="floormap-col-label">큰방</p><div class="room-row"></div></div>
-          <div class="floormap-room-group" id="col-room-small-1"><p class="floormap-col-label">작은방 1</p><div class="room-row"></div></div>
-          <div class="floormap-room-group" id="col-room-small-2"><p class="floormap-col-label">작은방 2</p><div class="room-row"></div></div>
-        </div>
-      </div>
     </section>
 
-    <!-- Right: Order / KDS / Menu / Materials -->
-    <section class="panel order-panel">
+    <!-- 방 사이드바 -->
+    <aside class="rooms-sidebar">
+      <p class="section-label" style="text-align:center;margin-bottom:8px;">Rooms</p>
+      <button class="room-zone-btn" data-zone="room-small-2" type="button">
+        <span class="room-zone-name">작은방 2</span>
+        <span class="room-zone-meta" id="meta-room-small-2">비어있음</span>
+      </button>
+      <button class="room-zone-btn" data-zone="room-small-1" type="button">
+        <span class="room-zone-name">작은방 1</span>
+        <span class="room-zone-meta" id="meta-room-small-1">비어있음</span>
+      </button>
+      <button class="room-zone-btn room-zone-large" data-zone="room-large" type="button">
+        <span class="room-zone-name">큰방</span>
+        <span class="room-zone-meta" id="meta-room-large">비어있음</span>
+      </button>
+    </aside>
+
+    <!-- 주문 패널 -->
+    <section class="order-panel panel">
       <div class="tab-bar">
         <button class="tab-button is-active" data-tab="orders"    type="button">🍽 주문</button>
         <button class="tab-button"           data-tab="kds"       type="button">👨‍🍳 주방</button>
@@ -128,7 +160,7 @@
         <div class="panel-header">
           <div>
             <p class="section-label">Orders</p>
-            <h2 id="active-table-title">테이블</h2>
+            <h2 id="active-table-title">테이블 선택</h2>
           </div>
           <div class="header-actions">
             <button id="checkout-button" class="checkout-button" type="button" disabled>💳 결제</button>
@@ -186,14 +218,8 @@
           <div><p class="section-label">Menus</p><h2>메뉴 관리</h2></div>
         </div>
         <form id="menu-add-form" class="menu-add-form">
-          <label class="form-label">
-            <span>메뉴명</span>
-            <input name="newMenuName" type="text" placeholder="예: 삼계탕" required/>
-          </label>
-          <label class="form-label">
-            <span>가격</span>
-            <input name="newMenuPrice" type="number" min="0" step="1000" placeholder="15000" required/>
-          </label>
+          <label class="form-label"><span>메뉴명</span><input name="newMenuName" type="text" placeholder="예: 삼계탕" required/></label>
+          <label class="form-label"><span>가격</span><input name="newMenuPrice" type="number" min="0" step="1000" placeholder="15000" required/></label>
           <button type="submit" class="primary-button">추가</button>
         </form>
         <ul id="menu-manage-list" class="menu-manage-list"></ul>
@@ -216,6 +242,7 @@
         <ul id="material-list" class="order-list" style="margin-top:16px"></ul>
       </div>
     </section>
+
   </main>
 </div>
 
@@ -224,7 +251,7 @@
   <button class="table-card" type="button">
     <div class="table-card__top">
       <span class="table-card__name"></span>
-      <span class="table-card__merge"></span>
+      <span class="table-card__badge"></span>
     </div>
     <strong class="table-card__total"></strong>
     <small class="table-card__meta"></small>
