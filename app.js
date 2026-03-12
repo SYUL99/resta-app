@@ -362,8 +362,8 @@ document.querySelector("#menu-add-form").addEventListener("submit", e=>{
 // ── Table Card Factory ──
 function makeTableCard(table, onClick) {
   const tmpl     = document.querySelector("#table-card-template").content.cloneNode(true);
-  const btn      = tmpl.querySelector(".table-card");
-  const selBtn   = tmpl.querySelector(".table-select");
+  const btn      = tmpl.firstElementChild;   // <button class="table-card">
+  const selBtn   = btn.querySelector(".table-select");
   const shOrders = getSharedOrders(table.id);
   const waiting  = shOrders.filter(o=>!o.served).length;
   const group    = getGroupForTable(table.id);
@@ -382,7 +382,7 @@ function makeTableCard(table, onClick) {
 
   btn.addEventListener("click", ()=> onClick ? onClick(table.id) : selectTable(table.id));
   selBtn.addEventListener("click", e=>{ e.stopPropagation(); toggleSelection(table.id); });
-  return tmpl;
+  return btn;  // DocumentFragment 대신 button 엘리먼트 직접 반환
 }
 
 function selectTable(tableId) {
