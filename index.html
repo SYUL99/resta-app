@@ -1,0 +1,193 @@
+<!DOCTYPE html>
+<html lang="ko">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1.0, viewport-fit=cover, user-scalable=no"
+    />
+    <meta name="theme-color" content="#8e2e1e" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+    <meta name="apple-mobile-web-app-title" content="식당 주문판" />
+    <title>식당 테이블 주문판</title>
+    <link rel="manifest" href="manifest.webmanifest" />
+    <link rel="icon" href="icon.svg" type="image/svg+xml" />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700;800&display=swap"
+      rel="stylesheet"
+    />
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+  <body>
+    <div class="shell">
+      <header class="hero">
+        <div>
+          <p class="eyebrow">Table Order Board</p>
+          <h1>테이블마다 주문 목록을 바로 확인하는 앱</h1>
+          <p class="hero-copy">
+            홀 14개 테이블과 방 6개 테이블을 구역별로 보고, 단체 손님은 여러 테이블을 묶어서 함께 관리합니다.
+          </p>
+        </div>
+        <div class="summary-card">
+          <span>현재 영업 현황</span>
+          <strong id="open-table-count">0개 테이블 사용 중</strong>
+          <p id="sales-total">총 주문 금액 0원</p>
+          <small id="app-mode" class="app-mode">브라우저 모드</small>
+        </div>
+      </header>
+
+      <main class="layout">
+        <section class="panel tables-panel">
+          <div class="panel-header">
+            <div>
+              <p class="section-label">Tables</p>
+              <h2>구역별 테이블 현황</h2>
+            </div>
+            <button id="reset-button" class="ghost-button" type="button">
+              초기화
+            </button>
+          </div>
+          <div class="merge-panel">
+            <div>
+              <p class="section-label">Merge</p>
+              <h3 id="selected-table-count">1개 선택</h3>
+              <p id="table-selection-summary" class="merge-copy">
+                테이블을 선택하면 단체석으로 묶을 수 있습니다.
+              </p>
+              <p id="merge-status" class="merge-copy">
+                현재 선택한 테이블은 개별 사용 중입니다.
+              </p>
+            </div>
+            <div class="merge-actions">
+              <button id="merge-button" class="primary-button" type="button">선택 테이블 묶기</button>
+              <button id="unmerge-button" class="ghost-button" type="button">묶음 해제</button>
+            </div>
+          </div>
+          <div id="zone-sections" class="zone-sections"></div>
+        </section>
+
+        <section class="panel order-panel">
+          <!-- 탭 헤더 -->
+          <div class="tab-bar">
+            <button class="tab-button is-active" data-tab="orders" type="button">🍽 주문 관리</button>
+            <button class="tab-button" data-tab="materials" type="button">📦 원재료</button>
+          </div>
+
+          <!-- 주문 탭 -->
+          <div id="tab-orders" class="tab-panel">
+            <div class="panel-header">
+              <div>
+                <p class="section-label">Orders</p>
+                <h2 id="active-table-title">1번 테이블</h2>
+              </div>
+              <div style="display:grid;gap:8px;align-items:end;text-align:right;">
+                <button id="checkout-button" class="primary-button" type="button" disabled>💳 결제 완료</button>
+                <span id="sync-status" class="sync-status" hidden></span>
+              </div>
+            </div>
+
+            <form id="order-form" class="order-form">
+              <label>
+                메뉴 선택
+                <select id="menu-select" name="menuName">
+                  <option value="로스구이 한마리">로스구이 한마리</option>
+                  <option value="로스구이 반마리">로스구이 반마리</option>
+                  <option value="백숙 한마리">백숙 한마리</option>
+                  <option value="백숙 반마리">백숙 반마리</option>
+                  <option value="찹쌀밥">찹쌀밥</option>
+                  <option value="매밥">매밥</option>
+                  <option value="소주">소주</option>
+                  <option value="맥주">맥주</option>
+                  <option value="음료">음료</option>
+                </select>
+              </label>
+              <label>
+                가격
+                <input id="menu-price" name="menuPrice" type="number" min="0" step="1000" required />
+              </label>
+              <label>
+                수량
+                <input id="menu-qty" name="menuQty" type="number" min="1" value="1" required />
+              </label>
+              <button type="submit" class="primary-button">주문 추가</button>
+            </form>
+
+            <div class="quick-menu">
+              <button class="chip" data-name="로스구이 한마리" data-price="70000" type="button">로스구이 한마리</button>
+              <button class="chip" data-name="로스구이 반마리" data-price="50000" type="button">로스구이 반마리</button>
+              <button class="chip" data-name="백숙 한마리" data-price="80000" type="button">백숙 한마리</button>
+              <button class="chip" data-name="백숙 반마리" data-price="50000" type="button">백숙 반마리</button>
+              <button class="chip" data-name="찹쌀밥" data-price="4000" type="button">찹쌀밥</button>
+              <button class="chip" data-name="매밥" data-price="2000" type="button">매밥</button>
+              <button class="chip" data-name="소주" data-price="5000" type="button">소주</button>
+              <button class="chip" data-name="맥주" data-price="5000" type="button">맥주</button>
+              <button class="chip" data-name="음료" data-price="2000" type="button">음료</button>
+            </div>
+
+            <div class="order-summary">
+              <div><span>주문 건수</span><strong id="order-count">0건</strong></div>
+              <div><span>테이블 합계</span><strong id="table-total">0원</strong></div>
+            </div>
+
+            <ul id="order-list" class="order-list"></ul>
+          </div>
+
+          <!-- 원재료 탭 -->
+          <div id="tab-materials" class="tab-panel" hidden>
+            <div class="panel-header">
+              <div>
+                <p class="section-label">Materials</p>
+                <h2>원재료 입력</h2>
+              </div>
+            </div>
+
+            <form id="material-form" class="material-form">
+              <label>날짜<input id="mat-date" name="matDate" type="date" required /></label>
+              <label>재료명<input name="matName" type="text" placeholder="예: 닭 1박스" required /></label>
+              <label>수량<input name="matQty" type="text" placeholder="예: 10" /></label>
+              <label>단위<input name="matUnit" type="text" placeholder="예: kg, 마리" /></label>
+              <label>가격(원)<input name="matPrice" type="number" min="0" step="1000" required /></label>
+              <label>메모<input name="matMemo" type="text" placeholder="선택사항" /></label>
+              <button type="submit" class="primary-button" style="grid-column:1/-1;">원재료 추가</button>
+            </form>
+
+            <ul id="material-list" class="order-list" style="margin-top:16px;"></ul>
+          </div>
+        </section>
+      </main>
+    </div>
+
+    <template id="table-card-template">
+      <button class="table-card" type="button">
+        <div class="table-card__top">
+          <span class="table-card__name"></span>
+          <span class="table-card__merge"></span>
+        </div>
+        <strong class="table-card__total"></strong>
+        <small class="table-card__meta"></small>
+        <span class="table-select">선택</span>
+      </button>
+    </template>
+
+    <template id="order-item-template">
+      <li class="order-item">
+        <div class="order-item__main">
+          <div>
+            <strong class="order-item__name"></strong>
+            <p class="order-item__meta"></p>
+          </div>
+          <span class="status-badge"></span>
+        </div>
+        <div class="order-item__actions">
+          <button class="ghost-button order-toggle" type="button"></button>
+          <button class="ghost-button order-delete" type="button">삭제</button>
+        </div>
+      </li>
+    </template>
+
+    <script src="app.js"></script>
+  </body>
+</html>
