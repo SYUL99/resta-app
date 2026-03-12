@@ -450,6 +450,7 @@ function renderTables() {
   });
 
 // 방 팝업이 열려있으면 사이드바 메타만 갱신 (모달 재렌더 금지 — 닫기 버튼 충돌 방지)
+}
 
 // ── Render Orders ──
 function renderOrders() {
