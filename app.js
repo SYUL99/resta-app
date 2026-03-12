@@ -449,15 +449,7 @@ function renderTables() {
     }
   });
 
-  // 방 팝업이 열려있으면 같이 갱신
-  const modal = document.querySelector("#room-modal");
-  if (!modal.hidden) {
-    const zoneLabels = {"큰방":"room-large","작은방 1":"room-small-1","작은방 2":"room-small-2"};
-    const title = document.querySelector("#room-modal-title").textContent;
-    const zoneId = zoneLabels[title];
-    if (zoneId) openRoomPopup(zoneId);
-  }
-}
+// 방 팝업이 열려있으면 사이드바 메타만 갱신 (모달 재렌더 금지 — 닫기 버튼 충돌 방지)
 
 // ── Render Orders ──
 function renderOrders() {
